@@ -13,6 +13,9 @@ venv/
 # VSCode settings
 .vscode/
 
+# Visual Studio
+.vs/
+
 # OS files
 .DS_Store
 
