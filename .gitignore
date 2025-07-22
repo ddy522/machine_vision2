@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode settings
+.vscode/
+
+# OS files
+.DS_Store
+
+# Log files
+*.log
+
+# dotenv files (환경 변수)
+*.env
+
+# 기타 빌드 산출물
+build/
+dist/
+*.egg-info/
