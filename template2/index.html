@@ -1,114 +1,409 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Webcam YOLO OBB</title>
-    <style>
-        #container {
-            position: relative;
-            width: 640px;
-            height: 480px;
-        }
-        #video {
-            width: 640px;
-            height: 480px;
-        }
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 640px;
-            height: 480px;
-            pointer-events: none;
-        }
-    </style>
+  <title>Webcam YOLO OBB + BOM Table</title>
+  <style>
+    #container {
+      position: relative;
+      width: 640px;
+      height: 480px;
+      display: inline-block;
+    }
+    #video {
+      width: 640px;
+      height: 480px;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 640px;
+      height: 480px;
+      pointer-events: none;
+    }
+    #bom-container {
+      display: inline-block;
+      vertical-align: top;
+      margin-left: 20px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    #bom {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    #bom th, #bom td {
+      border: 1px solid #333;
+      padding: 4px 8px;
+      text-align: center;
+    }
+    #bom th {
+      background: #f0f0f0;
+    }
+    #work-container {
+      display: inline-block;
+      vertical-align: top;
+      margin-left: 20px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    #work {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    #work th, #work td {
+      border: 1px solid #333;
+      padding: 4px 8px;
+      text-align: center;
+    }
+    #work th {
+      background: #f0f0f0;
+    }
+    #overall-status {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 18px;
+      font-family: Arial, sans-serif;
+    }
+    /* 오른쪽 위 작업중 메시지 */
+    #work-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: #007bff;
+      color: white;
+      padding: 8px 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      display: none;
+      z-index: 1000;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Webcam YOLO OBB 실시간 스트림</h1>
-    <div id="container">
-        <!-- 영상은 img src="/video_feed"로 받음 -->
-        <img id="video" src="/video_feed" alt="Webcam Stream" />
-        <canvas id="overlay" width="640" height="480"></canvas>
-    </div>
+  <h1>Webcam YOLO OBB + BOM Table</h1>
 
-    <script>
-        const canvas = document.getElementById('overlay');
-        const ctx = canvas.getContext('2d');
+  <div id="container">
+    <img id="video" src="/video_feed" alt="Webcam Stream" />
+    <canvas id="overlay" width="640" height="480"></canvas>
+  </div>
 
-        // WebSocket 연결: 현재 호스트에 /ws 엔드포인트로 연결
-        const ws = new WebSocket(`ws://${location.host}/ws`);
+  <div id="bom-container">
+    <div id="overall-status">전체 상태: 로딩 중...</div>
 
-        // 이전 프레임 좌표 저장용 (좌표 변동 없으면 다시 그리지 않기 위함)
-        let prevBoxes = [];
+    <h3>BOM 테이블</h3>
+    <table id="bom">
+      <thead>
+        <tr>
+          <th>부모코드</th>
+          <th>부품코드</th>
+          <th>부품명</th>
+          <th>사용량</th>
+          <th>순번</th>
+          <th>클래스no</th>
+          <th>탐지개수</th>
+        </tr>
+      </thead>
+      <tbody id="bom-body">
+        <tr><td colspan="7">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-        ws.onopen = () => {
-            // 30fps 폴링용 타이머 (33ms마다 서버에 좌표 요청)
-            setInterval(() => {
-                if(ws.readyState === WebSocket.OPEN) {
-                    ws.send("get");  // 아무 메시지나 보내서 서버에 최신 좌표 요청
-                }
-            }, 33);
-        };
+  <div id="bom-container">
+    <h3>작업지시서</h3>
+    <table id="work">
+      <thead>
+        <tr>
+          <th>순서</th>
+          <th>작업과정</th>
+          <th>부품명</th>
+        </tr>
+      </thead>
+      <tbody id="work-body">
+        <tr><td colspan="3">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
+  <!-- 작업중 표시 div -->
+  <div id="work-status">작업중</div>
 
-            // 좌표가 변했는지 확인하는 함수
-            function isSameBoxes(boxes1, boxes2, tolerance = 100000) {
-                if(boxes1.length !== boxes2.length) return false;
-                for(let i=0; i<boxes1.length; i++) {
-                    const b1 = boxes1[i];
-                    const b2 = boxes2[i];
-                    if(b1.class_id !== b2.class_id) return false;
-                    for(let j=0; j<b1.points.length; j++) {
-                        const dx = Math.abs(b1.points[j][0] - b2.points[j][0]);
-                        const dy = Math.abs(b1.points[j][1] - b2.points[j][1]);
-                        if(dx > tolerance || dy > tolerance) return false;
-                    }
-                }
-                return true;
+  <script>
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+
+    let prevBoxes = [];
+    let smoothBoxes = [];
+
+    const tolerance = 5;
+    const smoothingFactor = 0.5;
+
+    let bomData = [];
+    const bomDetectionCounts = new Map();
+    const bomRowMap = new Map();
+
+    let workData = [];
+    const workDetectionCounts = new Map();
+    const workRowMap = new Map();
+
+    // 작업중 상태 변수
+    let workInProgress = false;
+
+    // cls_no 또는 class_no 에 해당하는 part_seq 를 찾는 함수
+    function getPartSeqByClassId(classId) {
+      const row = bomData.find(r => Number(r.cls_no ?? r.class_no ?? -1) === classId);
+      if (row) return row.part_seq ?? '';
+      return '';
+    }
+
+    // 두 박스 배열이 tolerance 내에서 동일한지 비교
+    function isSameBoxes(boxes1, boxes2, tol) {
+      if (boxes1.length !== boxes2.length) return false;
+      for (let i = 0; i < boxes1.length; i++) {
+        const b1 = boxes1[i];
+        const b2 = boxes2[i];
+        if (b1.class_id !== b2.class_id) return false;
+        for (let j = 0; j < b1.points.length; j++) {
+          const dx = Math.abs(b1.points[j][0] - b2.points[j][0]);
+          const dy = Math.abs(b1.points[j][1] - b2.points[j][1]);
+          if (dx > tol || dy > tol) return false;
+        }
+      }
+      return true;
+    }
+
+    // 좌표를 부드럽게 보간하는 함수
+    function smoothCoords(prev, current) {
+      if (prev.length === 0 || prev.length !== current.length) return current;
+      return current.map((c, i) => {
+        const p = prev[i];
+        if (p.class_id !== c.class_id) return c;
+        const points = c.points.map((pt, j) => [
+          p.points[j][0] * (1 - smoothingFactor) + pt[0] * smoothingFactor,
+          p.points[j][1] * (1 - smoothingFactor) + pt[1] * smoothingFactor
+        ]);
+        return { class_id: c.class_id, class_name: c.class_name, points };
+      });
+    }
+
+    const overallStatusDiv = document.getElementById("overall-status");
+    const workStatusDiv = document.getElementById("work-status");
+
+    let bomClassSet = new Set();
+
+    // WebSocket 연결
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onerror = (e) => console.error(e);
+    ws.onclose = (e) => console.warn("WebSocket closed:", e);
+
+    ws.onopen = () => {
+      setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) ws.send("get");
+      }, 100);
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (isSameBoxes(prevBoxes, data, tolerance)) {
+        smoothBoxes = smoothCoords(smoothBoxes, data);
+      } else {
+        smoothBoxes = smoothCoords(smoothBoxes, data);
+        prevBoxes = data;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // BOM 클래스 번호 집합 초기화 (최초 1회)
+      if (bomClassSet.size === 0 && bomData.length > 0) {
+        bomClassSet = new Set(bomData.map(r => Number(r.cls_no ?? r.class_no ?? -1)));
+      }
+
+      // BOM에 없는 클래스 필터링 하지 않음
+      const filteredBoxes = smoothBoxes;
+
+      // 탐지 개수 초기화
+      const counts = {};
+      bomClassSet.forEach(cls => counts[cls] = 0);
+
+      // 캔버스에 박스 그리기 및 탐지 개수 집계
+      filteredBoxes.forEach(box => {
+        const cls = box.class_id;
+        counts[cls] = (counts[cls] || 0) + 1;
+
+        const points = box.points;
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+        ctx.closePath();
+
+        ctx.strokeStyle = cls === 0 ? 'blue' : cls === 1 ? 'black' : cls === 2 ? 'green' : 'red';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.font = "14px Arial";
+        ctx.fillText(box.class_name || `Class ${cls}`, points[0][0], points[0][1] - 5);
+
+        const partSeq = getPartSeqByClassId(cls);
+        if (partSeq !== '') {
+          const circleX = points[0][0];
+          const circleY = points[0][1] - 20;
+          const radius = 10;
+
+          ctx.beginPath();
+          ctx.arc(circleX, circleY, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.fill();
+
+          ctx.fillStyle = "white";
+          ctx.font = "bold 14px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(partSeq.toString(), circleX, circleY);
+          ctx.textAlign = "start";
+        }
+      });
+
+      // BOM 테이블 탐지 개수 갱신 및 상태 판단
+      let hasExcess = false;
+      let hasShortage = false;
+      let allOk = true;
+
+      for (const row of bomData) {
+        const clsNo = Number(row.cls_no ?? row.class_no ?? '');
+        const detectedCount = counts[clsNo] || 0;
+        const usage = Number(row.useage) || 0;
+        const tr = bomRowMap.get(row.part_code);
+
+        if (tr) {
+          const tdDetect = tr.querySelector('.detect-count');
+          tdDetect.textContent = detectedCount;
+
+          if (detectedCount === usage) {
+            tdDetect.style.backgroundColor = '#a0e7a0'; // 초록 (적정)
+            tdDetect.title = '적정';
+          } else if (detectedCount > usage) {
+            tdDetect.style.backgroundColor = '#f28c8c'; // 빨강 (초과)
+            tdDetect.title = '초과';
+            hasExcess = true;
+            allOk = false;
+          } else {
+            tdDetect.style.backgroundColor = '#f2c38c'; // 주황 (부족)
+            tdDetect.title = '부족';
+            hasShortage = true;
+            allOk = false;
+          }
+        }
+      }
+
+      // 전체 상태 텍스트 업데이트 및 작업중 표시 제어
+      if (hasExcess) {
+        overallStatusDiv.textContent = "전체 상태: 초과";
+        overallStatusDiv.style.color = "red";
+        workStatusDiv.style.display = workInProgress ? "block" : "none"; // 작업중이면 계속 보이게
+      } else if (hasShortage) {
+        overallStatusDiv.textContent = "전체 상태: 부족";
+        overallStatusDiv.style.color = "orange";
+        workStatusDiv.style.display = workInProgress ? "block" : "none"; // 작업중이면 계속 보이게
+      } else if (allOk) {
+        overallStatusDiv.textContent = "전체 상태: 적정";
+        overallStatusDiv.style.color = "green";
+
+        // 1. 탐지된 클래스가 모두 BOM에 포함되는지 확인
+        const detectedClasses = Object.keys(counts).map(Number).filter(cls => counts[cls] > 0);
+
+        // 2. 탐지된 클래스 중에 BOM에 없는 클래스가 있으면 false
+        const hasInvalidDetectedClass = detectedClasses.some(cls => !bomClassSet.has(cls));
+
+        // 3. BOM에 있는 모든 클래스가 탐지되었는지 확인
+        const allBomClassesDetected = [...bomClassSet].every(cls => (counts[cls] || 0) > 0);
+
+        // 최종 조건
+        const allDetected = !hasInvalidDetectedClass && allBomClassesDetected;
+
+        if (allDetected) {
+          if (!workInProgress) {
+            if (confirm("BOM에 있는 모든 클래스가 탐지되었습니다. 작업을 시작하시겠습니까?")) {
+              workStatusDiv.style.display = "block";
+              workInProgress = true;  // 한번 true되면 끝
+            } else {
+              workStatusDiv.style.display = "none";
             }
+          } else {
+            workStatusDiv.style.display = "block";  // 작업중이면 계속 표시
+          }
+        } else {
+          // 탐지 안된 상태라도 작업중이면 계속 표시
+          workStatusDiv.style.display = workInProgress ? "block" : "none";
+        }
+      } else {
+        overallStatusDiv.textContent = "전체 상태: 로딩 중...";
+        overallStatusDiv.style.color = "black";
+        workStatusDiv.style.display = workInProgress ? "block" : "none";
 
-            // 좌표 변동 없으면 다시 그리지 않고 return
-            if(isSameBoxes(prevBoxes, data)) {
-                return;
-            }
-            prevBoxes = data;
+      }
+    };
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // BOM 데이터 가져오기 및 테이블 생성
+    fetch("/get_data")
+      .then(res => res.json())
+      .then(data => {
+        bomData = data;
+        const tbody = document.getElementById("bom-body");
+        tbody.innerHTML = "";
 
-            data.forEach(box => {
-                const points = box.points;
-                const cls = box.class_id;
-                const clsName = box.class_name;
+        for (const row of bomData) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.parent_code}</td>
+            <td>${row.part_code}</td>
+            <td>${row.part_name}</td>
+            <td>${row.useage}</td>
+            <td>${row.part_seq}</td>
+            <td>${row.cls_no ?? row.class_no ?? ''}</td>
+            <td class="detect-count">0</td>
+          `;
+          tbody.appendChild(tr);
+          bomRowMap.set(row.part_code, tr);
+          bomDetectionCounts.set(row.part_code, 0);
+        }
 
-                ctx.beginPath();
-                ctx.moveTo(points[0][0], points[0][1]);
-                for(let i=1; i<points.length; i++){
-                    ctx.lineTo(points[i][0], points[i][1]);
-                }
-                ctx.closePath();
+        // bomClassSet 초기화도 같이 해줌
+        bomClassSet = new Set(bomData.map(r => Number(r.cls_no ?? r.class_no ?? -1)));
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("bom-body").innerHTML = "<tr><td colspan='7'>데이터 로드 실패</td></tr>";
+      });
 
-                // 라벨별 색상
-                if(cls === 0) ctx.strokeStyle = 'blue';
-                else if(cls === 1) ctx.strokeStyle = 'black';
-                else if(cls === 2) ctx.strokeStyle = 'green';
-                else ctx.strokeStyle = 'red';
+    // 작업지시서 데이터 가져오기 및 테이블 생성
+    fetch("/get_data2")
+      .then(res => res.json())
+      .then(data => {
+        workData = data;
+        const tbody = document.getElementById("work-body");
+        tbody.innerHTML = "";
 
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.fillStyle = ctx.strokeStyle;
-                ctx.font = "16px Arial";
-                ctx.fillText(clsName, points[0][0], points[0][1] - 5);
-            });
-        };
-
-        ws.onerror = (e) => {
-            console.error("WebSocket error:", e);
-        };
-    </script>
+        for (const row of workData) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.work_seq}</td>
+            <td>${row.work_task}</td>
+            <td>${row.bom_code}</td>
+          `;
+          tbody.appendChild(tr);
+          workRowMap.set(row.work_seq, tr);
+          workDetectionCounts.set(row.work_seq, 0);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("work-body").innerHTML = "<tr><td colspan='3'>데이터 로드 실패</td></tr>";
+      });
+  </script>
 </body>
 </html>
-
-
- <!-- uvicorn main:app --reload -->
