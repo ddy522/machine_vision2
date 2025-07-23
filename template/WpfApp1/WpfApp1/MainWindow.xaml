@@ -1,28 +1,117 @@
-﻿<Window x:Class="WpfApp1.MainWindow"
+﻿ <Window x:Class="WpfApp1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OpenCvSharp YOLO WPF" Height="600" Width="800">
-        <Grid>
+    <Window.Resources>
+        <!-- DataGrid 기본 스타일 (템플릿 오버라이드 제거) -->
+        <Style TargetType="DataGrid">
+            <Setter Property="AlternatingRowBackground" Value="#F3F6F9"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#EEE"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#EEE"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="ColumnHeaderHeight" Value="35"/>
+            <Setter Property="RowHeight" Value="30"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="CanUserSortColumns" Value="True"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <!-- 템플릿 오버라이드는 제거하여 기본 템플릿 사용 -->
+        </Style>
+
+        <!-- DataGridColumnHeader 스타일 -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="BorderBrush" Value="#005A9E"/>
+            <Setter Property="Padding" Value="5,0"/>
+        </Style>
+    
+        <!-- DataGridRow 스타일 -->
+        <Style TargetType="DataGridRow">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="#EEE"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#CDE8FF"/>
+                    <Setter Property="Foreground" Value="#000"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E6F2FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
         <!-- 전체를 가로로 1:2 비율로 나눔 -->
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" /> <!-- 왼쪽 1/3 -->
-            <ColumnDefinition Width="2*" /> <!-- 오른쪽 2/3 -->
+            <ColumnDefinition Width="2*" />
+            <!-- 왼쪽 1/3 -->
+            <ColumnDefinition Width="3*" />
+            <!-- 오른쪽 2/3 -->
         </Grid.ColumnDefinitions>
 
         <!-- 왼쪽 영역: DataGrid 2개 세로 배치 -->
         <Grid Grid.Column="0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="1*" /> <!-- 위 DataGrid -->
-                <RowDefinition Height="1*" /> <!-- 아래 DataGrid -->
+                <RowDefinition Height="1*" />
+                <!-- 위 DataGrid -->
+                <RowDefinition Height="1*" />
+                <!-- 아래 DataGrid -->
             </Grid.RowDefinitions>
 
-            <DataGrid Name="DataGridTop" Grid.Row="0" Margin="5" AutoGenerateColumns="True" />
-            <DataGrid Name="DataGridBottom" Grid.Row="1" Margin="5" AutoGenerateColumns="True" />
+            <!-- 상단 BOM 영역 -->
+            <StackPanel Grid.Row="0" Margin="5">
+                <TextBlock Text="자재 명세서 (BOM)" 
+                           FontWeight="Bold" 
+                           FontSize="16" 
+                           Margin="0,0,0,5"
+                           HorizontalAlignment="Left" />
+                <DataGrid Name="DataGridTop"
+                          AutoGenerateColumns="False"
+                          HeadersVisibility="Column"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          HorizontalAlignment="Stretch"
+                          MinWidth="100">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="완제품" Binding="{Binding parent_code}" Width="*" />
+                        <DataGridTextColumn Header="자재코드" Binding="{Binding part_code}" Width="*" />
+                        <DataGridTextColumn Header="자재명" Binding="{Binding part_name}" Width="*" />
+                        <DataGridTextColumn Header="use" Binding="{Binding useage}" Width="*" />
+                        <DataGridTextColumn Header="seq" Binding="{Binding part_seq}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
+
+            <!-- 하단 DataGrid -->
+            <DataGrid Name="DataGridBottom"
+                      Grid.Row="1"
+                      Margin="5"
+                      AutoGenerateColumns="True"
+                      HorizontalAlignment="Stretch"
+                      MinWidth="100"/>
         </Grid>
 
         <!-- 오른쪽 영역: 비디오 + 캔버스 겹침 -->
         <Grid Grid.Column="1">
-            <!-- 비디오와 캔버스를 겹치기 위해 Grid에 두 요소를 같이 넣음 -->
             <Image Name="WebcamImage" Stretch="Uniform" />
             <Canvas Name="OverlayCanvas" Background="Transparent" IsHitTestVisible="False" />
         </Grid>

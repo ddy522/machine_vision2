@@ -8,8 +8,10 @@ namespace WpfApp1
 {
     public class Bom()
     {
-            public int Id { get; set; }
-            public string Name { get; set; }
-            public int Value { get; set; }
+            public string parent_code { get; set; }
+            public string part_code { get; set; }
+            public string part_name { get; set; }
+            public int useage { get; set; }
+            public int part_seq { get; set; }
     }
 }

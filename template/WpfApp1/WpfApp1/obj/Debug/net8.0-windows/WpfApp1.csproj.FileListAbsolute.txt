@@ -33,3 +33,4 @@ C:\Users\한국전파진흥협회\OneDrive\바탕 화면\CSharpServer\template\W
 C:\Users\한국전파진흥협회\OneDrive\바탕 화면\CSharpServer\template\WpfApp1\WpfApp1\obj\Debug\net8.0-windows\WpfApp1.pdb
 C:\Users\한국전파진흥협회\OneDrive\바탕 화면\CSharpServer\template\WpfApp1\WpfApp1\obj\Debug\net8.0-windows\WpfApp1.genruntimeconfig.cache
 C:\Users\한국전파진흥협회\OneDrive\바탕 화면\CSharpServer\template\WpfApp1\WpfApp1\obj\Debug\net8.0-windows\ref\WpfApp1.dll
+C:\Users\한국전파진흥협회\OneDrive\바탕 화면\CSharpServer\template\WpfApp1\WpfApp1\obj\Debug\net8.0-windows\WpfApp1.sourcelink.json

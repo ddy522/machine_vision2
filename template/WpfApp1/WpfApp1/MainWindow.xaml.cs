@@ -24,6 +24,9 @@ namespace WpfApp1
 
         private DateTime _lastSent = DateTime.MinValue; // 요청 간격 제어
 
+        // 이전 박스 저장
+        private List<System.Windows.Rect> _previousBoxes = new List<System.Windows.Rect>();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -82,6 +85,7 @@ namespace WpfApp1
                     if (response.IsSuccessStatusCode)
                     {
                         var json = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine(json);
                         DrawBoxes(json);
                     }
                 }
@@ -92,49 +96,105 @@ namespace WpfApp1
             }
         }
 
+        private bool AreBoxesSimilar(List<System.Windows.Rect> boxes1, List<System.Windows.Rect> boxes2, double tolerance = 3.0)
+        {
+            if (boxes1.Count != boxes2.Count)
+                return false;
+
+            for (int i = 0; i < boxes1.Count; i++)
+            {
+                var b1 = boxes1[i];
+                var b2 = boxes2[i];
+
+                if (Math.Abs(b1.X - b2.X) > tolerance ||
+                    Math.Abs(b1.Y - b2.Y) > tolerance ||
+                    Math.Abs(b1.Width - b2.Width) > tolerance ||
+                    Math.Abs(b1.Height - b2.Height) > tolerance)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private void DrawBoxes(string json)
         {
             Dispatcher.Invoke(() =>
             {
-                OverlayCanvas.Children.Clear();
-
                 try
                 {
                     var jobj = JObject.Parse(json);
-                    var boxes = jobj["result"];
+                    var results = jobj["result"];
 
-                    if (boxes == null) return;
+                    double yoloWidth = (double)jobj["image_width"];
+                    double yoloHeight = (double)jobj["image_height"];
 
-                    foreach (var box in boxes)
+                    double canvasWidth = OverlayCanvas.ActualWidth;
+                    double canvasHeight = OverlayCanvas.ActualHeight;
+
+                    double scaleX = canvasWidth / yoloWidth;
+                    double scaleY = canvasHeight / yoloHeight;
+
+                    if (results == null) return;
+
+                    OverlayCanvas.Children.Clear();
+
+                    foreach (var result in results)
                     {
-                        double x1 = (double)box["x1"];
-                        double y1 = (double)box["y1"];
-                        double x2 = (double)box["x2"];
-                        double y2 = (double)box["y2"];
+                        var points = result["points"];
+                        int pointCount = points.Count();
 
-                        double w = x2 - x1;
-                        double h = y2 - y1;
-
-                        var rect = new Rectangle
+                        if (pointCount < 3)
                         {
-                            Width = w,
-                            Height = h,
+                            // 점 3개 미만이면 그리지 않음
+                            continue;
+                        }
+
+                        List<System.Drawing.Point> pts = new List<System.Drawing.Point>();
+                        foreach (var p in points)
+                        {
+                            double rawX = (double)p[0];
+                            double rawY = (double)p[1];
+
+                            if (rawX < 0) rawX = 0; // 클램핑
+                            if (rawY < 0) rawY = 0;
+
+                            double x = rawX * scaleX;
+                            double y = rawY * scaleY;
+
+                            pts.Add(new System.Drawing.Point((int)x, (int)y));
+                        }
+
+                        // 중심 기준 각도 정렬 (꼭짓점 순서 보정)
+                        double centerX = pts.Average(pt => pt.X);
+                        double centerY = pts.Average(pt => pt.Y);
+
+                        pts.Sort((a, b) =>
+                        {
+                            double angleA = System.Math.Atan2(a.Y - centerY, a.X - centerX);
+                            double angleB = System.Math.Atan2(b.Y - centerY, b.X - centerX);
+                            return angleA.CompareTo(angleB);
+                        });
+
+                        var polygon = new Polygon
+                        {
                             Stroke = Brushes.Red,
-                            StrokeThickness = 2
+                            StrokeThickness = 2,
+                            Fill = Brushes.Transparent,
+                            Points = new PointCollection((IEnumerable<System.Windows.Point>)pts)
                         };
 
-                        Canvas.SetLeft(rect, x1);
-                        Canvas.SetTop(rect, y1);
-
-                        OverlayCanvas.Children.Add(rect);
+                        OverlayCanvas.Children.Add(polygon);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("JSON 파싱 오류: " + ex.Message);
+                    MessageBox.Show("JSON 파싱 오류: " + ex.Message);
                 }
             });
         }
+
+
 
         // ★ 추가: 데이터 그리드에 서버 JSON 불러오기 ★
         private async Task LoadGridDataAsync()

@@ -1,0 +1,41 @@
+﻿<Window x:Class="TestUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TestUI"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="760" Width="1280" ResizeMode="NoResize"
+        AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" Background="Transparent">
+    <Border CornerRadius="25" Background="#151f2d" MouseDown="Border_MouseDown">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="838*"/>
+                <ColumnDefinition Width="343*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!--left menu-->
+            <Border Grid.RowSpan="3" Background="#1e2e44" CornerRadius="25 0 0 25">
+                <Grid>
+                    <StackPanel VerticalAlignment="Top">
+                        <!--ellipses-->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 30 0 40">
+                            <Ellipse Width="8" Fill="#eb1700"/>
+                            <Ellipse Width="8" Fill="#ffaf01" Margin="7 0"/>
+                            <Ellipse Width="8" Fill="#009d00"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            
+            
+        </Grid>
+    </Border>
+</Window>
