@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>YOLO OBB + FastAPI + Canvas + Work Table</title>
+  <style>
+    body { background: #222; color: #fff; text-align: center; }
+    #video-container {
+      position: relative;
+      display: inline-block;
+    }
+    #video {
+      border: 2px solid #555;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    #work-container {
+      margin-top: 30px;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 0 auto;
+      width: 80%;
+      background: #333;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 8px 12px;
+    }
+    th {
+      background: #444;
+    }
+  </style>
+</head>
+<body>
+  <h1>YOLO OBB 실시간 탐지 (Canvas) + 작업지시서</h1>
+
+  <div id="video-container">
+    <img id="video" width="640" height="480" />
+    <canvas id="overlay" width="640" height="480"></canvas>
+  </div>
+
+  <div id="work-container">
+    <h2>작업지시서</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>순서</th>
+          <th>작업 과정</th>
+          <th>부품 코드</th>
+        </tr>
+      </thead>
+      <tbody id="work-body">
+        <tr><td colspan="3">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+
+    let prevDetections = [];
+
+    // ✅ points 기반 비교
+    function isSameDetections(dets1, dets2, tolerance = 5) {
+      if (!dets1 || !dets2) return false;
+      if (dets1.length !== dets2.length) return false;
+      for (let i = 0; i < dets1.length; i++) {
+        const p1 = dets1[i].points || [];
+        const p2 = dets2[i].points || [];
+        if (p1.length !== p2.length) return false;
+        for (let j = 0; j < p1.length; j++) {
+          if (Math.abs(p1[j][0] - p2[j][0]) > tolerance) return false;
+          if (Math.abs(p1[j][1] - p2[j][1]) > tolerance) return false;
+        }
+        if (dets1[i].class_id !== dets2[i].class_id) return false;
+      }
+      return true;
+    }
+
+    // ✅ points 기반 폴리곤 그리기
+    function drawDetections(detections) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      detections.forEach(det => {
+        const points = det.points;
+        const cls = det.class_name;
+
+        if (!points || points.length < 4) return;
+
+        ctx.strokeStyle = "lime";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i][0], points[i][1]);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // 라벨 배경
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.font = "16px Arial";
+        const textWidth = ctx.measureText(cls).width;
+        ctx.fillRect(points[0][0], points[0][1] - 20, textWidth + 10, 20);
+
+        ctx.fillStyle = "lime";
+        ctx.fillText(cls, points[0][0] + 5, points[0][1] - 5);
+      });
+    }
+
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      video.src = `data:image/jpeg;base64,${data.image}`;
+      console.log("YOLO 데이터:", data.detections);
+
+      if (!isSameDetections(data.detections, prevDetections)) {
+        drawDetections(data.detections);
+        prevDetections = data.detections;
+      }
+    };
+
+    ws.onclose = () => {
+      alert("서버와 연결이 끊겼습니다.");
+    };
+
+    function loadWorkTable() {
+      fetch("/work")
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById("work-body");
+          tbody.innerHTML = "";
+          data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.work_seq}</td>
+              <td>${row.work_task}</td>
+              <td>${row.bom_code}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => {
+          console.error("작업지시서 로드 실패", err);
+        });
+    }
+
+    window.onload = loadWorkTable;
+  </script>
+</body>
+</html>

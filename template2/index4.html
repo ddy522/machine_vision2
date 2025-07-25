@@ -1,0 +1,133 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 조립 공정 확인 시스템</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: flex-start; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { display: flex; gap: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .video-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #video-feed { width: 640px; height: 640px; border: 2px solid #ccc; border-radius: 8px; background-color: #000; }
+        #status-message { margin-top: 10px; font-size: 1.2em; font-weight: bold; color: #333; min-height: 40px; text-align: center; }
+        .process-status { width: 300px; }
+        h2 { text-align: center; color: #1877f2; }
+        .steps { list-style-type: none; padding: 0; }
+        .step { background-color: #e4e6eb; border: 2px solid #ced0d4; padding: 15px; margin-bottom: 10px; border-radius: 6px; transition: all 0.3s ease; }
+        .step.current { border-color: #1877f2; border-width: 4px; font-weight: bold; }
+        .step.completed { border-color: #42b72a; background-color: #e9f6ea; text-decoration: line-through; color: #606770; }
+        #reset-button { display: block; width: 100%; padding: 12px; margin-top: 20px; font-size: 1em; color: white; background-color: #fa3e3e; border: none; border-radius: 6px; cursor: pointer; }
+        #reset-button:hover { background-color: #e03838; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-wrapper">
+            <img id="video-feed" src="" alt="Video Stream">
+            <p id="status-message">서버에 연결 중...</p>
+        </div>
+<div class="process-status">
+    <h2>조립 단계</h2>
+    
+    <!-- [수정] 이 부분을 추가합니다 -->
+    <div class="debug-info">
+        <strong>현재 감지된 클래스:</strong>
+        <span id="detected-classes-list">없음</span>
+    </div>
+    <!-- 여기까지 추가 -->
+
+    <ul class="steps">
+        <li id="step-1" class="step">1. 빨강 + 초록</li>
+        <li id="step-2" class="step">2. + 파랑 1</li>
+        <li id="step-3" class="step">3. + 파랑 2</li>
+    </ul>
+    <button id="reset-button">공정 초기화</button>
+</div>
+
+<!-- [수정] 디버깅 정보 스타일 추가 -->
+<style>
+    /* ... 기존 스타일 ... */
+    .debug-info {
+        background-color: #fffbe6;
+        border: 1px solid #ffe58f;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        text-align: center;
+    }
+    #detected-classes-list {
+        font-weight: bold;
+        color: #d4380d;
+    }
+</style>
+
+    <script>
+        const videoFeed = document.getElementById('video-feed');
+        const statusMessage = document.getElementById('status-message');
+        const steps = [
+            document.getElementById('step-1'),
+            document.getElementById('step-2'),
+            document.getElementById('step-3')
+        ];
+        const resetButton = document.getElementById('reset-button');
+
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onopen = () => {
+            statusMessage.textContent = '카메라에 연결되었습니다. 조립을 시작하세요.';
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            // 1. 비디오 프레임 업데이트
+            videoFeed.src = `data:image/jpeg;base64,${data.image}`;
+
+            // 2. 상태 메시지 업데이트
+            statusMessage.textContent = data.message;
+
+            // 3. 단계별 UI 업데이트
+            const currentStep = data.current_step;
+            steps.forEach((step, index) => {
+                const stepNumber = index + 1;
+                step.classList.remove('current', 'completed');
+
+                if (stepNumber < currentStep) {
+                    step.classList.add('completed');
+                } else if (stepNumber === currentStep && currentStep <= 3) {
+                    step.classList.add('current');
+                }
+            });
+            // 완료 상태 처리
+            if (currentStep > 3) {
+                statusMessage.style.color = '#42b72a';
+            } else {
+                 statusMessage.style.color = '#333';
+            }
+        };
+
+        ws.onclose = () => {
+            statusMessage.textContent = '서버 연결이 끊어졌습니다. 페이지를 새로고침하세요.';
+            statusMessage.style.color = 'red';
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            statusMessage.textContent = '연결 오류가 발생했습니다.';
+            statusMessage.style.color = 'red';
+        };
+
+        // 초기화 버튼 이벤트 리스너
+        resetButton.addEventListener('click', async () => {
+            try {
+                await fetch('/reset', { method: 'POST' });
+                statusMessage.textContent = '공정이 초기화되었습니다. 1단계부터 다시 시작하세요.';
+            } catch (error) {
+                console.error('Reset failed:', error);
+            }
+        });
+    </script>
+</body>
+</html>
